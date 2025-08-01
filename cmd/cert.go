@@ -48,6 +48,14 @@ func init() {
 	certCmd.Flags().StringVar(&keyType, "key-type", "rsa2048", "Key type: rsa2048, rsa4096, ec256, ec384")
 	certCmd.Flags().BoolVar(&forceRenew, "force", false, "Force renewal even if certificate is valid")
 
+	// Register completion for domain flag
+	certCmd.RegisterFlagCompletionFunc("domain", GetDomainCompletions)
+
+	// Register completion for key-type flag
+	certCmd.RegisterFlagCompletionFunc("key-type", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"rsa2048", "rsa4096", "ec256", "ec384"}, cobra.ShellCompDirectiveNoFileComp
+	})
+
 	certCmd.MarkFlagRequired("domain")
 }
 

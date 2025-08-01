@@ -131,6 +131,62 @@ flarecert list
 flarecert renew
 ```
 
+## Shell Completion
+
+FlareCert supports auto-completion for bash, zsh, fish, and PowerShell shells. This provides tab-completion for commands, flags, and even domain suggestions from your Cloudflare zones.
+
+### Setup Completion
+
+#### For Zsh (macOS default):
+```bash
+# Generate completion and save to zsh completion directory
+flarecert completion zsh > "${fpath[1]}/_flarecert"
+
+# Or for Homebrew users:
+flarecert completion zsh > $(brew --prefix)/share/zsh/site-functions/_flarecert
+
+# Reload your shell or run:
+source ~/.zshrc
+```
+
+#### For Bash:
+```bash
+# For current session:
+source <(flarecert completion bash)
+
+# For all sessions (Linux):
+flarecert completion bash > /etc/bash_completion.d/flarecert
+
+# For all sessions (macOS with Homebrew):
+flarecert completion bash > $(brew --prefix)/etc/bash_completion.d/flarecert
+```
+
+#### For Fish:
+```bash
+# For current session:
+flarecert completion fish | source
+
+# For all sessions:
+flarecert completion fish > ~/.config/fish/completions/flarecert.fish
+```
+
+### Completion Features
+
+- ✅ Command and flag completion
+- ✅ Domain suggestions from your Cloudflare zones
+- ✅ Key type options (rsa2048, rsa4096, ec256, ec384)
+- ✅ Wildcard domain suggestions (*.domain.com)
+- ✅ Common subdomain suggestions (www.domain.com)
+
+### Example Usage with Completion:
+```bash
+# Type and press TAB to see domain suggestions from your zones:
+flarecert cert --domain <TAB>
+
+# See available key types:
+flarecert cert --domain example.com --key-type <TAB>
+```
+
 ## ACME Challenge Methods
 
 ### Why DNS-01 is preferred for Cloudflare:
