@@ -21,7 +21,31 @@ A Go application for automatically generating and renewing SSL certificates from
 2. Cloudflare API token with DNS edit permissions
 3. Go 1.24 or later
 
-## Setup
+## Installation
+
+### Option 1: Install using Go (Recommended)
+
+```bash
+go install github.com/bariiss/flarecert@latest
+```
+
+### Option 2: Download pre-built binaries
+
+Download the appropriate binary for your system from the [releases page](https://github.com/bariiss/flarecert/releases):
+
+- **Linux (x64)**: `flarecert-linux-amd64`
+- **Linux (ARM64)**: `flarecert-linux-arm64`
+- **macOS (Intel)**: `flarecert-darwin-amd64`
+- **macOS (Apple Silicon)**: `flarecert-darwin-arm64`
+- **Windows (x64)**: `flarecert-windows-amd64.exe`
+
+Make the binary executable and move it to your PATH:
+```bash
+chmod +x flarecert-*
+sudo mv flarecert-* /usr/local/bin/flarecert
+```
+
+### Option 3: Build from source
 
 1. Clone the repository:
 ```bash
@@ -34,12 +58,19 @@ cd flarecert
 go mod tidy
 ```
 
-3. Create a `.env` file:
+3. Build the binary:
+```bash
+go build -o flarecert main.go
+```
+
+## Setup
+
+1. Create a `.env` file:
 ```bash
 cp .env.example .env
 ```
 
-4. Configure your Cloudflare credentials in `.env`:
+2. Configure your Cloudflare credentials in `.env`:
 ```
 CLOUDFLARE_API_TOKEN=your_api_token_here
 CLOUDFLARE_EMAIL=your_email@example.com
@@ -50,32 +81,32 @@ ACME_EMAIL=your_email@example.com
 
 ### List available Cloudflare zones:
 ```bash
-go run main.go zones
+flarecert zones
 ```
 
 ### Generate a certificate for a single domain:
 ```bash
-go run main.go cert --domain example.com
+flarecert cert --domain example.com
 ```
 
 ### Generate a wildcard certificate:
 ```bash
-go run main.go cert --domain "*.example.com"
+flarecert cert --domain "*.example.com"
 ```
 
 ### Generate a certificate for multiple domains:
 ```bash
-go run main.go cert --domain example.com --domain www.example.com --domain api.example.com
+flarecert cert --domain example.com --domain www.example.com --domain api.example.com
 ```
 
 ### List existing certificates:
 ```bash
-go run main.go list
+flarecert list
 ```
 
 ### Renew existing certificates:
 ```bash
-go run main.go renew
+flarecert renew
 ```
 
 ## ACME Challenge Methods
