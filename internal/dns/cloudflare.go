@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
@@ -13,10 +14,11 @@ import (
 
 // CloudflareProvider implements the DNS provider for Cloudflare
 type CloudflareProvider struct {
-	client  *cloudflare.API
-	timeout time.Duration
-	verbose bool
-	records map[string]string // Track created records for cleanup
+	client     *cloudflare.API
+	timeout    time.Duration
+	verbose    bool
+	records    map[string]string // Track created records for cleanup
+	recordsMux sync.RWMutex      // Protect the records map
 }
 
 // NewCloudflareProvider creates a new Cloudflare DNS provider
@@ -76,8 +78,10 @@ func (p *CloudflareProvider) Present(domain, token, keyAuth string) error {
 		return fmt.Errorf("failed to create DNS record: %w", err)
 	}
 
-	// Store record ID for cleanup
+	// Store record ID for cleanup (thread-safe)
+	p.recordsMux.Lock()
 	p.records[token] = response.ID
+	p.recordsMux.Unlock()
 
 	if p.verbose {
 		log.Printf("DNS record created successfully: %s", response.ID)
@@ -88,9 +92,15 @@ func (p *CloudflareProvider) Present(domain, token, keyAuth string) error {
 	time.Sleep(30 * time.Second)
 
 	return nil
-} // CleanUp removes the DNS TXT record after the challenge is complete
+}
+
+// CleanUp removes the DNS TXT record after the challenge is complete
 func (p *CloudflareProvider) CleanUp(domain, token, keyAuth string) error {
+	// Get record ID (thread-safe)
+	p.recordsMux.RLock()
 	recordID, exists := p.records[token]
+	p.recordsMux.RUnlock()
+
 	if !exists {
 		if p.verbose {
 			log.Printf("No record ID found for token %s, skipping cleanup", token)
@@ -116,8 +126,10 @@ func (p *CloudflareProvider) CleanUp(domain, token, keyAuth string) error {
 		return fmt.Errorf("failed to delete DNS record: %w", err)
 	}
 
-	// Remove from tracking
+	// Remove from tracking (thread-safe)
+	p.recordsMux.Lock()
 	delete(p.records, token)
+	p.recordsMux.Unlock()
 
 	if p.verbose {
 		log.Printf("DNS record cleaned up successfully")

@@ -10,10 +10,8 @@ import (
 
 func main() {
 	// Load environment variables from .env file if it exists
-	if err := godotenv.Load(); err != nil {
-		// Don't fail if .env doesn't exist, just log it
-		log.Printf("Warning: .env file not found: %v", err)
-	}
+	// Silently ignore if .env file doesn't exist (use system env vars)
+	godotenv.Load()
 
 	// Execute the root command
 	if err := cmd.Execute(); err != nil {

@@ -65,6 +65,16 @@ go build -o flarecert main.go
 
 ## Setup
 
+### Environment Configuration
+
+FlareCert supports multiple ways to configure your credentials with the following precedence (highest to lowest):
+
+1. **Local `.env` file** (highest priority)
+2. **System environment variables** 
+3. **Default values** (if any)
+
+#### Option 1: Using .env file (Recommended for development)
+
 1. Create a `.env` file:
 ```bash
 cp .env.example .env
@@ -76,6 +86,18 @@ CLOUDFLARE_API_TOKEN=your_api_token_here
 CLOUDFLARE_EMAIL=your_email@example.com
 ACME_EMAIL=your_email@example.com
 ```
+
+#### Option 2: Using system environment variables (Recommended for production)
+
+Export the variables in your shell or add them to your system's environment:
+
+```bash
+export CLOUDFLARE_API_TOKEN=your_api_token_here
+export CLOUDFLARE_EMAIL=your_email@example.com
+export ACME_EMAIL=your_email@example.com
+```
+
+**Note:** If both `.env` file and system environment variables are present, the `.env` file values will take precedence.
 
 ## Usage
 
@@ -152,7 +174,9 @@ certs/
 ## Security Notes
 
 - Store API tokens securely
-- Use environment variables for production
+- Use environment variables for production deployments
+- Use `.env` files for local development only
+- Never commit `.env` files to version control
 - Regularly rotate API tokens
 - Monitor certificate expiration dates
 
