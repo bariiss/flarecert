@@ -1,7 +1,11 @@
 # Build stage
-FROM golang:1.24-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
 
 # Build arguments
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
+ARG TARGETOS
+ARG TARGETARCH
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG DATE=unknown
@@ -25,7 +29,7 @@ RUN go mod download
 COPY . .
 
 # Build the application with version information
-RUN CGO_ENABLED=0 GOOS=linux go build \
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags="-w -s -extldflags '-static' -X github.com/bariiss/flarecert/cmd.version=${VERSION} -X github.com/bariiss/flarecert/cmd.commit=${COMMIT} -X github.com/bariiss/flarecert/cmd.date=${DATE}" \
     -a -installsuffix cgo \
     -o flarecert .
