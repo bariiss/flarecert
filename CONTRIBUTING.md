@@ -14,7 +14,7 @@ Thank you for your interest in contributing to FlareCert! This document provides
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.24 or later
 - Git
 - Make (optional but recommended)
 
@@ -247,7 +247,7 @@ What you expected to happen.
 
 **Environment**
 - OS: [e.g. Ubuntu 20.04]
-- Go version: [e.g. 1.21]
+- Go version: [e.g. 1.24]
 - FlareCert version: [e.g. v1.0.0]
 
 **Additional context**

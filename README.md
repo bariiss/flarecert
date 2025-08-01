@@ -19,7 +19,7 @@ A Go application for automatically generating and renewing SSL certificates from
 
 1. Cloudflare account with domains managed
 2. Cloudflare API token with DNS edit permissions
-3. Go 1.21 or later
+3. Go 1.24 or later
 
 ## Setup
 

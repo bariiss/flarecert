@@ -1,6 +1,6 @@
 module github.com/bariiss/flarecert
 
-go 1.21
+go 1.24
 
 require (
 	github.com/cloudflare/cloudflare-go v0.84.0
