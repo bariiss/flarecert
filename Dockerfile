@@ -1,6 +1,11 @@
 # Build stage
 FROM golang:1.24-alpine AS builder
 
+# Build arguments
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG DATE=unknown
+
 # Install git and ca-certificates (needed for private repos and SSL)
 RUN apk add --no-cache git ca-certificates tzdata
 
@@ -19,9 +24,9 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -ldflags='-w -s -extldflags "-static"' \
+# Build the application with version information
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-w -s -extldflags '-static' -X github.com/bariiss/flarecert/cmd.version=${VERSION} -X github.com/bariiss/flarecert/cmd.commit=${COMMIT} -X github.com/bariiss/flarecert/cmd.date=${DATE}" \
     -a -installsuffix cgo \
     -o flarecert .
 
