@@ -58,7 +58,7 @@ func (u *User) GetPrivateKey() crypto.PrivateKey {
 }
 
 // NewClient creates a new ACME client with Cloudflare DNS provider
-func NewClient(cfg *config.Config, verbose bool) (*Client, error) {
+func NewClient(cfg *config.Config, verbose bool, keyType string) (*Client, error) {
 	// Generate user private key
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -74,7 +74,20 @@ func NewClient(cfg *config.Config, verbose bool) (*Client, error) {
 	// Create lego config
 	legoConfig := lego.NewConfig(user)
 	legoConfig.CADirURL = cfg.ACMEServer
-	legoConfig.Certificate.KeyType = certcrypto.RSA2048
+
+	// Set key type for certificates
+	switch keyType {
+	case "rsa2048":
+		legoConfig.Certificate.KeyType = certcrypto.RSA2048
+	case "rsa4096":
+		legoConfig.Certificate.KeyType = certcrypto.RSA4096
+	case "ec256":
+		legoConfig.Certificate.KeyType = certcrypto.EC256
+	case "ec384":
+		legoConfig.Certificate.KeyType = certcrypto.EC384
+	default:
+		legoConfig.Certificate.KeyType = certcrypto.RSA2048
+	}
 
 	// Create lego client
 	client, err := lego.NewClient(legoConfig)
@@ -113,31 +126,15 @@ func NewClient(cfg *config.Config, verbose bool) (*Client, error) {
 }
 
 // ObtainCertificate requests a new certificate for the given domains
-func (c *Client) ObtainCertificate(domains []string, keyType string) (*CertificateResult, error) {
+func (c *Client) ObtainCertificate(domains []string) (*CertificateResult, error) {
 	if c.verbose {
 		log.Printf("Requesting certificate for domains: %v", domains)
 	}
 
-	// Set key type
-	var kt certcrypto.KeyType
-	switch keyType {
-	case "rsa2048":
-		kt = certcrypto.RSA2048
-	case "rsa4096":
-		kt = certcrypto.RSA4096
-	case "ec256":
-		kt = certcrypto.EC256
-	case "ec384":
-		kt = certcrypto.EC384
-	default:
-		kt = certcrypto.RSA2048
-	}
-
 	// Create certificate request
 	request := certificate.ObtainRequest{
-		Domains:    domains,
-		Bundle:     true,
-		PrivateKey: kt,
+		Domains: domains,
+		Bundle:  true,
 	}
 
 	// Obtain certificate

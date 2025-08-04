@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/bariiss/flarecert/internal/acme"
+	"github.com/bariiss/flarecert/internal/config"
 
 	"github.com/spf13/cobra"
 )
@@ -34,14 +35,36 @@ func init() {
 func runListCommand(cmd *cobra.Command, args []string) error {
 	verbose, _ := cmd.Flags().GetBool("verbose")
 
-	if verbose {
-		log.Println("Scanning certificate directory...")
+	// Load configuration to get the correct cert directory
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	entries, err := os.ReadDir(listCertDir)
+	// Use cert directory from config if not overridden by flag
+	certDir := listCertDir
+	if certDir == "./certs" { // Default value means flag wasn't set
+		certDir = cfg.CertDir
+	}
+
+	if verbose {
+		log.Printf("Scanning certificate directory: %s", certDir)
+	}
+
+	// Expand tilde in path if present
+	if strings.HasPrefix(certDir, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get user home directory: %w", err)
+		}
+		certDir = filepath.Join(homeDir, certDir[2:])
+	}
+
+	entries, err := os.ReadDir(certDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Println("No certificate directory found.")
+			fmt.Printf("No certificates found in the specified directory.\n")
+			printEmptyTable()
 			return nil
 		}
 		return fmt.Errorf("failed to read certificate directory: %w", err)
@@ -61,11 +84,11 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 		}
 
 		domainName := entry.Name()
-		certPath := filepath.Join(listCertDir, domainName, "cert.pem")
+		certPath := filepath.Join(certDir, domainName, "current", "cert.pem")
 
 		if _, err := os.Stat(certPath); os.IsNotExist(err) {
 			if verbose {
-				log.Printf("Skipping %s: no cert.pem found", domainName)
+				log.Printf("Skipping %s: no cert.pem found in current/", domainName)
 			}
 			continue
 		}
@@ -107,4 +130,13 @@ func runListCommand(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// printEmptyTable prints an empty table with headers
+func printEmptyTable() {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	defer w.Flush()
+
+	fmt.Fprintln(w, "DOMAIN\tDOMAINS\tEXPIRATION\tSTATUS")
+	fmt.Fprintln(w, "------\t-------\t----------\t------")
 }

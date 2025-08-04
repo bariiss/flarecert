@@ -99,7 +99,7 @@ func runCertCommand(cmd *cobra.Command, args []string) error {
 	paths := utils.GetCertificatePaths(certDir, primaryDomain)
 
 	// Initialize ACME client
-	client, err := acme.NewClient(cfg, verbose)
+	client, err := acme.NewClient(cfg, verbose, keyType)
 	if err != nil {
 		return fmt.Errorf("failed to create ACME client: %w", err)
 	}
@@ -126,7 +126,7 @@ func runCertCommand(cmd *cobra.Command, args []string) error {
 	// Generate certificate
 	fmt.Printf("🔐 Generating certificate for: %s\n", utils.FormatDomainForDisplay(domains))
 
-	cert, err := client.ObtainCertificate(domains, keyType)
+	cert, err := client.ObtainCertificate(domains)
 	if err != nil {
 		return fmt.Errorf("failed to obtain certificate: %w", err)
 	}

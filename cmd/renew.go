@@ -50,8 +50,8 @@ func runRenewCommand(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	// Initialize ACME client
-	client, err := acme.NewClient(cfg, verbose)
+	// Initialize ACME client (use default RSA2048 for renewal)
+	client, err := acme.NewClient(cfg, verbose, "rsa2048")
 	if err != nil {
 		return fmt.Errorf("failed to create ACME client: %w", err)
 	}
@@ -76,7 +76,7 @@ func runRenewCommand(cmd *cobra.Command, args []string) error {
 	for _, cert := range certsToRenew {
 		fmt.Printf("\n🔄 Renewing certificate for: %s\n", cert.Domain)
 
-		newCert, err := client.ObtainCertificate(cert.Domains, "rsa2048")
+		newCert, err := client.ObtainCertificate(cert.Domains)
 		if err != nil {
 			log.Printf("❌ Failed to renew %s: %v", cert.Domain, err)
 			continue
