@@ -85,37 +85,6 @@ data:
   tls.crt: %s
   tls.key: %s
   ca.crt: %s
----
-# Usage examples:
-#
-# 1. Apply this secret to your cluster:
-#    kubectl apply -f %s-secret.yaml
-#
-# 2. Use in an Ingress:
-#    apiVersion: networking.k8s.io/v1
-#    kind: Ingress
-#    metadata:
-#      name: %s-ingress
-#    spec:
-#      tls:
-#        - hosts:
-#            - %s
-#          secretName: %s
-#      rules:
-#        - host: %s
-#          http:
-#            paths:
-#              - path: /
-#                pathType: Prefix
-#                backend:
-#                  service:
-#                    name: your-service
-#                    port:
-#                      number: 80
-#
-# 3. Use with cert-manager for auto-renewal:
-#    Add this annotation to your Ingress:
-#    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 `,
 		secretName,
 		primaryDomain,
@@ -125,11 +94,6 @@ data:
 		certB64,
 		keyB64,
 		fullchainB64,
-		secretName,
-		secretName,
-		primaryDomain,
-		secretName,
-		primaryDomain,
 	)
 }
 
