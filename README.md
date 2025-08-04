@@ -63,7 +63,49 @@ chmod +x flarecert-*
 sudo mv flarecert-* /usr/local/bin/flarecert
 ```
 
-### Option 4: Build from source
+### Option 4: Docker
+
+Pull and run FlareCert using Docker:
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/bariiss/flarecert:latest
+
+# Run with environment variables
+docker run --rm \
+  -e CLOUDFLARE_API_TOKEN=your_api_token_here \
+  -e CLOUDFLARE_EMAIL=your_email@example.com \
+  -e ACME_EMAIL=your_email@example.com \
+  -v $(pwd)/certs:/app/certs \
+  ghcr.io/bariiss/flarecert:latest cert --domain example.com
+
+# Run with .env file
+docker run --rm \
+  --env-file .env \
+  -v $(pwd)/certs:/app/certs \
+  ghcr.io/bariiss/flarecert:latest cert --domain example.com
+
+# List certificates
+docker run --rm \
+  --env-file .env \
+  -v $(pwd)/certs:/app/certs \
+  ghcr.io/bariiss/flarecert:latest list
+
+# Export to Kubernetes YAML
+docker run --rm \
+  --env-file .env \
+  -v $(pwd)/certs:/app/certs \
+  -v $(pwd)/exports:/app/exports \
+  ghcr.io/bariiss/flarecert:latest export --all --output /app/exports
+```
+
+**Docker Usage Notes:**
+- Mount `/app/certs` volume to persist certificates
+- Mount `/app/exports` volume for Kubernetes YAML exports
+- Use `--env-file .env` or individual `-e` flags for credentials
+- Add `--staging` flag for Let's Encrypt staging environment
+
+### Option 5: Build from source
 
 1. Clone the repository:
 ```bash
@@ -107,12 +149,97 @@ ACME_EMAIL=your_email@example.com
 
 #### Option 2: Using system environment variables (Recommended for production)
 
-Export the variables in your shell or add them to your system's environment:
+**Temporary (current session only):**
+Export the variables in your shell:
 
 ```bash
 export CLOUDFLARE_API_TOKEN=your_api_token_here
 export CLOUDFLARE_EMAIL=your_email@example.com
 export ACME_EMAIL=your_email@example.com
+```
+
+**Permanent (persist across sessions):**
+Add the environment variables to your shell profile:
+
+For **Zsh** (macOS default):
+```bash
+# Add to ~/.zshrc
+echo 'export CLOUDFLARE_API_TOKEN=your_api_token_here' >> ~/.zshrc
+echo 'export CLOUDFLARE_EMAIL=your_email@example.com' >> ~/.zshrc
+echo 'export ACME_EMAIL=your_email@example.com' >> ~/.zshrc
+
+# Reload your shell
+source ~/.zshrc
+```
+
+For **Bash** (Linux/macOS):
+```bash
+# Add to ~/.bashrc (Linux) or ~/.bash_profile (macOS)
+echo 'export CLOUDFLARE_API_TOKEN=your_api_token_here' >> ~/.bashrc
+echo 'export CLOUDFLARE_EMAIL=your_email@example.com' >> ~/.bashrc
+echo 'export ACME_EMAIL=your_email@example.com' >> ~/.bashrc
+
+# Reload your shell
+source ~/.bashrc
+
+# On macOS, you might need to use ~/.bash_profile instead:
+# echo 'export CLOUDFLARE_API_TOKEN=your_api_token_here' >> ~/.bash_profile
+# source ~/.bash_profile
+```
+
+For **Fish** shell:
+```bash
+# Add to ~/.config/fish/config.fish
+echo 'set -gx CLOUDFLARE_API_TOKEN your_api_token_here' >> ~/.config/fish/config.fish
+echo 'set -gx CLOUDFLARE_EMAIL your_email@example.com' >> ~/.config/fish/config.fish
+echo 'set -gx ACME_EMAIL your_email@example.com' >> ~/.config/fish/config.fish
+
+# Reload Fish configuration
+source ~/.config/fish/config.fish
+```
+
+**Alternative: Manual editing**
+You can also manually edit your shell configuration file:
+
+```bash
+# Open your shell config file in your preferred editor
+nano ~/.zshrc     # For Zsh
+nano ~/.bashrc    # For Bash (Linux)
+nano ~/.bash_profile  # For Bash (macOS)
+nano ~/.config/fish/config.fish  # For Fish
+
+# Add these lines:
+export CLOUDFLARE_API_TOKEN=your_api_token_here
+export CLOUDFLARE_EMAIL=your_email@example.com
+export ACME_EMAIL=your_email@example.com
+
+# Save and reload your shell or restart your terminal
+```
+
+**For Windows:**
+```powershell
+# Using PowerShell (run as Administrator for system-wide)
+[Environment]::SetEnvironmentVariable("CLOUDFLARE_API_TOKEN", "your_api_token_here", "User")
+[Environment]::SetEnvironmentVariable("CLOUDFLARE_EMAIL", "your_email@example.com", "User")
+[Environment]::SetEnvironmentVariable("ACME_EMAIL", "your_email@example.com", "User")
+
+# Or using Command Prompt
+setx CLOUDFLARE_API_TOKEN "your_api_token_here"
+setx CLOUDFLARE_EMAIL "your_email@example.com"
+setx ACME_EMAIL "your_email@example.com"
+
+# Restart your terminal after setting environment variables
+```
+
+**Verify environment variables are set:**
+```bash
+# Check if variables are properly set
+echo $CLOUDFLARE_API_TOKEN
+echo $CLOUDFLARE_EMAIL
+echo $ACME_EMAIL
+
+# Or use flarecert to verify (it will show an error if variables are missing)
+flarecert zones
 ```
 
 **Note:** If both `.env` file and system environment variables are present, the `.env` file values will take precedence.
@@ -172,6 +299,67 @@ flarecert export --all
 
 # Export to custom directory
 flarecert export --domain example.com --output ./k8s-secrets/
+```
+
+### Docker Usage Examples
+
+For users preferring containerized deployment:
+
+```bash
+# Create a .env file with your credentials
+cat > .env << EOF
+CLOUDFLARE_API_TOKEN=your_api_token_here
+CLOUDFLARE_EMAIL=your_email@example.com
+ACME_EMAIL=your_email@example.com
+EOF
+
+# Generate a wildcard certificate
+docker run --rm \
+  --env-file .env \
+  -v $(pwd)/certs:/app/certs \
+  ghcr.io/bariiss/flarecert:latest cert --domain "*.example.com"
+
+# Generate certificate with Kubernetes YAML
+docker run --rm \
+  --env-file .env \
+  -v $(pwd)/certs:/app/certs \
+  ghcr.io/bariiss/flarecert:latest cert --domain example.com --k8s
+
+# List all certificates
+docker run --rm \
+  --env-file .env \
+  -v $(pwd)/certs:/app/certs \
+  ghcr.io/bariiss/flarecert:latest list
+
+# Renew certificates
+docker run --rm \
+  --env-file .env \
+  -v $(pwd)/certs:/app/certs \
+  ghcr.io/bariiss/flarecert:latest renew
+
+# Export to Kubernetes YAML files
+mkdir -p exports
+docker run --rm \
+  --env-file .env \
+  -v $(pwd)/certs:/app/certs \
+  -v $(pwd)/exports:/app/exports \
+  ghcr.io/bariiss/flarecert:latest export --all --output /app/exports
+
+# Use with docker-compose (create docker-compose.yml)
+cat > docker-compose.yml << EOF
+version: '3.8'
+services:
+  flarecert:
+    image: ghcr.io/bariiss/flarecert:latest
+    env_file: .env
+    volumes:
+      - ./certs:/app/certs
+      - ./exports:/app/exports
+    command: cert --domain example.com --k8s
+EOF
+
+# Run with docker-compose
+docker-compose run --rm flarecert
 ```
 
 ## Shell Completion
