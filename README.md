@@ -26,13 +26,28 @@ A Go application for automatically generating and renewing SSL certificates from
 
 ## Installation
 
-### Option 1: Install using Go (Recommended)
+### Option 1: Homebrew (macOS)
+
+Install FlareCert using Homebrew:
+
+```bash
+brew tap bariiss/flarecert
+brew install flarecert
+```
+
+For updates:
+```bash
+brew update
+brew upgrade flarecert
+```
+
+### Option 2: Install using Go (Recommended for other platforms)
 
 ```bash
 go install github.com/bariiss/flarecert@latest
 ```
 
-### Option 2: Download pre-built binaries
+### Option 3: Download pre-built binaries
 
 Download the appropriate binary for your system from the [releases page](https://github.com/bariiss/flarecert/releases):
 
@@ -48,7 +63,7 @@ chmod +x flarecert-*
 sudo mv flarecert-* /usr/local/bin/flarecert
 ```
 
-### Option 3: Build from source
+### Option 4: Build from source
 
 1. Clone the repository:
 ```bash
