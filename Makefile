@@ -1,12 +1,17 @@
-.PHONY: build clean install test run-cert run-list run-renew help
+.PHONY: build clean install test run-cert run-list run-renew run-export run-export-domain help dev-cert dev-export dev-k8s-test version release
 
 # Build configuration
 BINARY_NAME=flarecert
 BUILD_DIR=./bin
 MAIN_FILE=main.go
 
+# Version information
+VERSION ?= 1.1.0
+COMMIT := $(shell git rev-parse --short HEAD)
+DATE := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+
 # Go build flags
-LDFLAGS=-ldflags "-X main.version=$(shell git describe --tags --always --dirty)"
+LDFLAGS=-ldflags "-X github.com/bariiss/flarecert/cmd.version=$(VERSION) -X github.com/bariiss/flarecert/cmd.commit=$(COMMIT) -X github.com/bariiss/flarecert/cmd.date=$(DATE)"
 
 # Default target
 all: build
@@ -30,6 +35,7 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)
 	@rm -rf certs/
+	@rm -rf exports/
 	@echo "✅ Clean complete"
 
 # Install binary to $GOPATH/bin
@@ -59,6 +65,16 @@ run-renew:
 	@echo "Running certificate renewal..."
 	@go run $(MAIN_FILE) renew --verbose
 
+# Run certificate export
+run-export:
+	@echo "Exporting certificates to Kubernetes YAML..."
+	@go run $(MAIN_FILE) export --all --output ./exports/
+
+# Run certificate export for specific domain
+run-export-domain:
+	@echo "Exporting specific domain certificate..."
+	@go run $(MAIN_FILE) export --domain example.com --output ./exports/example-com-secret.yaml
+
 # Check for required environment variables
 check-env:
 	@echo "Checking environment variables..."
@@ -77,11 +93,39 @@ setup: deps
 	@echo "1. Edit .env file with your Cloudflare credentials"
 	@echo "2. Run 'make build' to build the binary"
 	@echo "3. Run './bin/flarecert cert --domain yourdomain.com --staging' to test"
+	@echo "4. Run 'make dev-export' to test Kubernetes YAML export"
 
 # Development helpers
 dev-cert:
 	@echo "🧪 Generating test certificate (staging)..."
 	@go run $(MAIN_FILE) cert --domain test.example.com --staging --verbose
+
+dev-export:
+	@echo "🧪 Exporting test certificates..."
+	@mkdir -p exports
+	@go run $(MAIN_FILE) export --all --output ./exports/
+	@echo "✅ Exported certificates to ./exports/"
+
+dev-k8s-test:
+	@echo "🧪 Testing Kubernetes YAML generation..."
+	@mkdir -p exports
+	@go run $(MAIN_FILE) export --domain test.example.com --output ./exports/test-secret.yaml
+	@echo "📝 Generated test-secret.yaml"
+	@cat ./exports/test-secret.yaml
+
+# Show version information
+version:
+	@echo "FlareCert version: $(VERSION)"
+	@echo "Build commit: $(COMMIT)"
+	@echo "Build date: $(DATE)"
+
+# Create a release build
+release: clean
+	@echo "Creating release build v$(VERSION)..."
+	@mkdir -p $(BUILD_DIR)
+	@go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_FILE)
+	@echo "✅ Release build complete: $(BUILD_DIR)/$(BINARY_NAME)"
+	@echo "📦 Version: $(VERSION)"
 
 # Format code
 fmt:
@@ -101,8 +145,10 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  build      - Build the binary"
+	@echo "  release    - Create a release build"
+	@echo "  version    - Show version information"
 	@echo "  deps       - Install dependencies"
-	@echo "  clean      - Clean build artifacts"
+	@echo "  clean      - Clean build artifacts and exports"
 	@echo "  install    - Install binary to $$GOPATH/bin"
 	@echo "  test       - Run tests"
 	@echo "  setup      - Setup development environment"
@@ -112,7 +158,11 @@ help:
 	@echo "  help       - Show this help"
 	@echo ""
 	@echo "Development helpers:"
-	@echo "  run-cert   - Run certificate generation example"
-	@echo "  run-list   - List certificates"
-	@echo "  run-renew  - Run certificate renewal"
-	@echo "  dev-cert   - Generate test certificate (staging)"
+	@echo "  run-cert    - Run certificate generation example"
+	@echo "  run-list    - List certificates"
+	@echo "  run-renew   - Run certificate renewal"
+	@echo "  run-export  - Export all certificates to Kubernetes YAML"
+	@echo "  run-export-domain - Export specific domain certificate"
+	@echo "  dev-cert    - Generate test certificate (staging)"
+	@echo "  dev-export  - Export test certificates"
+	@echo "  dev-k8s-test - Test Kubernetes YAML generation"
