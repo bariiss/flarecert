@@ -6,7 +6,7 @@ BUILD_DIR=./bin
 MAIN_FILE=main.go
 
 # Version information
-VERSION ?= 1.1.1
+VERSION ?= 1.1.2
 COMMIT := $(shell git rev-parse --short HEAD)
 DATE := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 

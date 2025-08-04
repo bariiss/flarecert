@@ -154,6 +154,19 @@ jobs:
         merge-multiple: true
         path: ./release-artifacts
     
+    - name: Get commit message
+      id: commit
+      run: |
+        # Get the commit message for the tag
+        COMMIT_MSG=$(git log -1 --pretty=format:"%s%n%n%b" ${{ github.sha }})
+        echo "message<<EOF" >> $GITHUB_OUTPUT
+        echo "$COMMIT_MSG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        # Get short commit hash
+        SHORT_SHA=$(git rev-parse --short ${{ github.sha }})
+        echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+    
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -161,12 +174,35 @@ jobs:
           ./release-artifacts/*
         generate_release_notes: true
         body: |
-          ## 🚀 What's New
+          ## 🚀 Release Notes
           
-          This release includes improvements and bug fixes for FlareCert.
+          ${{ steps.commit.outputs.message }}
+          
+          ---
+          
+          **Commit:** `${{ steps.commit.outputs.short_sha }}`  
+          **Tag:** `${{ github.ref_name }}`  
+          **Date:** `${{ github.event.head_commit.timestamp }}`
           
           ## 📥 Installation
           
+          ### Homebrew (macOS)
+          ```bash
+          brew tap bariiss/flarecert
+          brew install flarecert
+          ```
+          
+          ### Go Install
+          ```bash
+          go install github.com/bariiss/flarecert@${{ github.ref_name }}
+          ```
+          
+          ### Docker
+          ```bash
+          docker pull ghcr.io/bariiss/flarecert:${{ github.ref_name }}
+          ```
+          
+          ### Binary Download
           Download the appropriate binary for your system:
           - **Linux (x64)**: `flarecert-linux-amd64`
           - **Linux (ARM64)**: `flarecert-linux-arm64`
@@ -180,9 +216,14 @@ jobs:
           sudo mv flarecert-* /usr/local/bin/flarecert
           ```
           
-          ## 🔧 Usage
+          ## 🔧 Quick Start
           
           ```bash
+          # Set up environment variables
+          export CLOUDFLARE_API_TOKEN=your_token_here
+          export CLOUDFLARE_EMAIL=your_email@example.com
+          export ACME_EMAIL=your_email@example.com
+          
           # List your Cloudflare zones
           flarecert zones
           
@@ -192,13 +233,19 @@ jobs:
           # Generate a wildcard certificate
           flarecert cert --domain "*.example.com"
           
+          # Generate with Kubernetes Secret
+          flarecert cert --domain example.com --k8s
+          
           # List certificates
           flarecert list
+          
+          # Export existing certificates
+          flarecert export --all
           
           # Renew certificates
           flarecert renew
           ```
           
-          For more information, see the [README](https://github.com/bariiss/flarecert/blob/main/README.md).
+          For detailed documentation, see the [README](https://github.com/bariiss/flarecert/blob/main/README.md).
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
