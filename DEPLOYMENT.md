@@ -8,7 +8,8 @@ This guide covers various deployment scenarios for FlareCert in production envir
 2. [Docker Deployment](#docker-deployment)
 3. [Automated Renewal](#automated-renewal)
 4. [Security Best Practices](#security-best-practices)
-5. [Integration Examples](#integration-examples)
+5. [Kubernetes Deployment](#kubernetes-deployment)
+6. [Integration Examples](#integration-examples)
 
 ## Server Deployment
 
@@ -184,6 +185,211 @@ sudo chmod 640 /etc/ssl/flarecert/*/privkey.pem
 - Run FlareCert on secure networks only
 - Use VPN for remote access
 - Monitor certificate generation logs
+
+## Kubernetes Deployment
+
+FlareCert provides excellent integration with Kubernetes through automatic Secret generation and export capabilities.
+
+### 1. Generating Certificates with Kubernetes Secrets
+
+Generate certificates with automatic Kubernetes Secret creation:
+
+```bash
+# Generate certificate with K8s Secret YAML
+flarecert cert --domain "*.example.com" --domain example.com --k8s
+
+# This creates both certificate files and Kubernetes Secret YAML:
+# certs/wildcard-example-com/current/wildcard-example-com-tls-secret.yaml
+```
+
+### 2. Exporting Existing Certificates
+
+Export existing certificates to Kubernetes Secrets without regenerating:
+
+```bash
+# Export specific certificate
+flarecert export --domain "*.example.com"
+
+# Export all certificates
+flarecert export --all
+
+# Export to custom directory
+flarecert export --all --output ./k8s-secrets/
+```
+
+### 3. Generated Secret Format
+
+FlareCert generates clean, minimal Kubernetes Secrets:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wildcard-example-com-tls
+  namespace: default
+type: kubernetes.io/tls
+data:
+  tls.crt: <base64-encoded-certificate>
+  tls.key: <base64-encoded-private-key>
+  ca.crt: <base64-encoded-certificate-chain>
+```
+
+### 4. Deploying Secrets to Kubernetes
+
+```bash
+# Apply the generated secret
+kubectl apply -f wildcard-example-com-tls-secret.yaml
+
+# Verify the secret was created
+kubectl get secret wildcard-example-com-tls -o yaml
+
+# Use in an Ingress
+kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-ingress
+spec:
+  tls:
+    - hosts:
+        - "*.example.com"
+        - example.com
+      secretName: wildcard-example-com-tls
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: example-service
+                port:
+                  number: 80
+EOF
+```
+
+### 5. Automated Certificate Management in Kubernetes
+
+#### Option A: CronJob for Certificate Renewal
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: flarecert-renewal
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: flarecert
+            image: your-registry/flarecert:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              flarecert renew --cert-dir /certs
+              flarecert export --all --output /k8s-secrets/
+              # Apply updated secrets
+              kubectl apply -f /k8s-secrets/
+            env:
+            - name: CLOUDFLARE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-credentials
+                  key: api-token
+            - name: CLOUDFLARE_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-credentials
+                  key: email
+            - name: ACME_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-credentials
+                  key: acme-email
+            volumeMounts:
+            - name: cert-storage
+              mountPath: /certs
+            - name: k8s-secrets
+              mountPath: /k8s-secrets
+          volumes:
+          - name: cert-storage
+            persistentVolumeClaim:
+              claimName: flarecert-storage
+          - name: k8s-secrets
+            emptyDir: {}
+          restartPolicy: OnFailure
+```
+
+#### Option B: Deployment with Persistent Storage
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flarecert
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flarecert
+  template:
+    metadata:
+      labels:
+        app: flarecert
+    spec:
+      containers:
+      - name: flarecert
+        image: your-registry/flarecert:latest
+        command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+        env:
+        - name: CLOUDFLARE_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: cloudflare-credentials
+              key: api-token
+        volumeMounts:
+        - name: cert-storage
+          mountPath: /certs
+      volumes:
+      - name: cert-storage
+        persistentVolumeClaim:
+          claimName: flarecert-storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: flarecert-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+### 6. Secret Management Best Practices
+
+1. **Namespace Isolation**: Deploy secrets in appropriate namespaces
+2. **RBAC**: Use proper role-based access control
+3. **Rotation**: Implement automatic secret rotation
+4. **Monitoring**: Monitor certificate expiration dates
+
+```bash
+# Create namespace-specific secrets
+flarecert export --domain example.com | \
+  sed 's/namespace: default/namespace: production/' | \
+  kubectl apply -f -
+
+# Monitor certificate expiration
+kubectl get secrets -o json | jq -r '.items[] | select(.type=="kubernetes.io/tls") | "\(.metadata.name): \(.data."tls.crt")"' | while read secret; do
+  echo "$secret" | base64 -d | openssl x509 -noout -enddate
+done
+```
 
 ## Integration Examples
 

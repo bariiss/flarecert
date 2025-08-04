@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/bariiss/flarecert/internal/utils"
 )
@@ -71,15 +70,6 @@ kind: Secret
 metadata:
   name: %s
   namespace: default
-  labels:
-    app: flarecert
-    domain: %s
-    type: tls-certificate
-  annotations:
-    flarecert.io/domains: "%s"
-    flarecert.io/primary-domain: "%s"
-    flarecert.io/created-at: "%s"
-    cert-manager.io/issuer-name: "letsencrypt"
 type: kubernetes.io/tls
 data:
   tls.crt: %s
@@ -87,10 +77,6 @@ data:
   ca.crt: %s
 `,
 		secretName,
-		primaryDomain,
-		strings.Join(domains, ", "),
-		primaryDomain,
-		time.Now().Format(time.RFC3339),
 		certB64,
 		keyB64,
 		fullchainB64,

@@ -7,12 +7,15 @@ A Go application for automatically generating and renewing SSL certificates from
 - ✅ Automatic SSL certificate generation using Let's Encrypt
 - ✅ DNS-01 challenge via Cloudflare API
 - ✅ Interactive zone selection for multi-zone accounts
-- ✅ Support for wildcard certificates
+- ✅ Support for wildcard certificates with smart directory naming
 - ✅ Works with Cloudflare's proxy (orange cloud) enabled
 - ✅ Automatic certificate renewal
 - ✅ Multiple domain support (SAN certificates)
 - ✅ Organized certificate storage with archiving
 - ✅ Certificate metadata tracking
+- ✅ Kubernetes Secret YAML generation (clean, minimal format)
+- ✅ Export existing certificates to Kubernetes Secrets
+- ✅ Shell completion with domain suggestions
 - ✅ Secure credential management
 
 ## Prerequisites
@@ -116,9 +119,19 @@ flarecert cert --domain example.com
 flarecert cert --domain "*.example.com"
 ```
 
+### Generate a certificate for multiple domains (wildcard + apex):
+```bash
+flarecert cert --domain example.com --domain "*.example.com"
+```
+
 ### Generate a certificate for multiple domains:
 ```bash
 flarecert cert --domain example.com --domain www.example.com --domain api.example.com
+```
+
+### Generate a certificate with Kubernetes Secret YAML:
+```bash
+flarecert cert --domain example.com --k8s
 ```
 
 ### List existing certificates:
@@ -129,6 +142,21 @@ flarecert list
 ### Renew existing certificates:
 ```bash
 flarecert renew
+```
+
+### Export existing certificates to Kubernetes Secrets:
+```bash
+# List available certificates for export
+flarecert export
+
+# Export specific certificate
+flarecert export --domain example.com
+
+# Export all certificates
+flarecert export --all
+
+# Export to custom directory
+flarecert export --domain example.com --output ./k8s-secrets/
 ```
 
 ## Shell Completion
@@ -177,6 +205,8 @@ flarecert completion fish > ~/.config/fish/completions/flarecert.fish
 - ✅ Key type options (rsa2048, rsa4096, ec256, ec384)
 - ✅ Wildcard domain suggestions (*.domain.com)
 - ✅ Common subdomain suggestions (www.domain.com)
+- ✅ Export command domain completion
+- ✅ Certificate directory completion
 
 ### Example Usage with Completion:
 ```bash
@@ -185,7 +215,51 @@ flarecert cert --domain <TAB>
 
 # See available key types:
 flarecert cert --domain example.com --key-type <TAB>
+
+# Export with domain completion:
+flarecert export --domain <TAB>
 ```
+
+## Command Reference
+
+### Available Commands
+
+| Command | Description |
+|---------|-------------|
+| `flarecert zones` | List all Cloudflare zones in your account |
+| `flarecert cert` | Generate new SSL certificates |
+| `flarecert list` | List existing certificates |
+| `flarecert renew` | Renew existing certificates |
+| `flarecert export` | Export existing certificates to Kubernetes Secrets |
+| `flarecert completion` | Generate shell completion scripts |
+| `flarecert version` | Show version information |
+
+### Certificate Generation Options
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--domain` | Domain name(s) to generate certificate for | `--domain example.com` |
+| `--key-type` | Certificate key type (rsa2048, rsa4096, ec256, ec384) | `--key-type rsa4096` |
+| `--staging` | Use Let's Encrypt staging environment for testing | `--staging` |
+| `--force` | Force renewal without prompting | `--force` |
+| `--k8s` | Generate Kubernetes Secret YAML | `--k8s` |
+| `--cert-dir` | Custom certificate storage directory | `--cert-dir ./my-certs` |
+
+### Export Options
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--domain` | Specific domain to export | `--domain example.com` |
+| `--all` | Export all available certificates | `--all` |
+| `--output` | Custom output directory for YAML files | `--output ./k8s-secrets/` |
+| `--cert-dir` | Certificate directory to read from | `--cert-dir ./certs` |
+
+### Global Options
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose output |
+| `-c, --config` | Config file path (default: .env) |
 
 ## ACME Challenge Methods
 
@@ -210,7 +284,14 @@ flarecert cert --domain example.com --key-type <TAB>
 
 ## Certificate Storage
 
-Certificates are stored in an organized structure in the `certs/` directory:
+Certificates are stored in an organized structure in the `certs/` directory with smart naming:
+
+### Directory Naming Convention
+- **Regular domains**: `example.com/`
+- **Wildcard certificates**: `wildcard-example-com/` (prioritized when both apex and wildcard domains are requested)
+- **Mixed certificates**: When requesting both `example.com` and `*.example.com`, the directory will be named `wildcard-example-com/`
+
+### Directory Structure
 ```
 certs/
 ├── example.com/
@@ -219,12 +300,43 @@ certs/
 │   │   ├── privkey.pem   # Private key
 │   │   ├── chain.pem     # Certificate chain
 │   │   ├── fullchain.pem # Full certificate chain
-│   │   └── cert.json     # Certificate metadata
+│   │   ├── cert.json     # Certificate metadata
+│   │   └── example-com-tls-secret.yaml  # Kubernetes Secret (if --k8s flag used)
 │   ├── archive/          # Previous certificates
 │   │   └── cert-20240801-120000-*.pem
 │   └── logs/             # Certificate generation logs
-└── wildcard.example.com/ # Wildcard certificates
-    └── ...
+└── wildcard-example-com/ # Wildcard certificates
+    ├── current/
+    │   ├── cert.pem
+    │   ├── privkey.pem
+    │   ├── chain.pem
+    │   ├── fullchain.pem
+    │   ├── cert.json
+    │   └── wildcard-example-com-tls-secret.yaml
+    ├── archive/
+    └── logs/
+```
+
+### Kubernetes Secret Generation
+
+The generated Kubernetes Secret YAML files are clean and minimal:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wildcard-example-com-tls
+  namespace: default
+type: kubernetes.io/tls
+data:
+  tls.crt: <base64-encoded-certificate>
+  tls.key: <base64-encoded-private-key>
+  ca.crt: <base64-encoded-certificate-chain>
+```
+
+Apply to your cluster:
+```bash
+kubectl apply -f wildcard-example-com-tls-secret.yaml
 ```
 
 ## Security Notes
