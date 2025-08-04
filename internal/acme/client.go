@@ -225,11 +225,23 @@ func ParseCertificateInfo(certPath string) ([]string, time.Time, error) {
 		return nil, time.Time{}, fmt.Errorf("failed to parse certificate: %w", err)
 	}
 
+	// Use a map to track which domains we've seen
+	seen := make(map[string]bool)
 	domains := make([]string, 0)
-	if cert.Subject.CommonName != "" {
+
+	// Add CommonName first if it exists and hasn't been seen
+	if cert.Subject.CommonName != "" && !seen[cert.Subject.CommonName] {
 		domains = append(domains, cert.Subject.CommonName)
+		seen[cert.Subject.CommonName] = true
 	}
-	domains = append(domains, cert.DNSNames...)
+
+	// Add DNS names that haven't been seen yet
+	for _, dnsName := range cert.DNSNames {
+		if !seen[dnsName] {
+			domains = append(domains, dnsName)
+			seen[dnsName] = true
+		}
+	}
 
 	return domains, cert.NotAfter, nil
 }

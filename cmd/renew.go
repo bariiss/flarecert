@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/bariiss/flarecert/internal/acme"
-	"github.com/bariiss/flarecert/internal/config"
+	"github.com/bariiss/flarecert/internal/certificate"
 
 	"github.com/spf13/cobra"
 )
@@ -44,18 +44,6 @@ func runRenewCommand(cmd *cobra.Command, args []string) error {
 		log.Println("Starting certificate renewal check...")
 	}
 
-	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load configuration: %w", err)
-	}
-
-	// Initialize ACME client (use default RSA2048 for renewal)
-	client, err := acme.NewClient(cfg, verbose, "rsa2048")
-	if err != nil {
-		return fmt.Errorf("failed to create ACME client: %w", err)
-	}
-
 	// Find certificates to renew
 	certsToRenew, err := findCertificatesForRenewal(renewCertDir, renewDays, renewAll, verbose)
 	if err != nil {
@@ -76,31 +64,20 @@ func runRenewCommand(cmd *cobra.Command, args []string) error {
 	for _, cert := range certsToRenew {
 		fmt.Printf("\n🔄 Renewing certificate for: %s\n", cert.Domain)
 
-		newCert, err := client.ObtainCertificate(cert.Domains)
+		// Create certificate manager for renewal (force renew enabled)
+		manager, err := certificate.NewManager(renewCertDir, "rsa2048", false, true, verbose)
 		if err != nil {
+			log.Printf("❌ Failed to create certificate manager for %s: %v", cert.Domain, err)
+			continue
+		}
+
+		// Renew certificate
+		if err := manager.GenerateCertificate(cert.Domains); err != nil {
 			log.Printf("❌ Failed to renew %s: %v", cert.Domain, err)
 			continue
 		}
 
-		// Save renewed certificate
-		domainDir := filepath.Join(renewCertDir, cert.Domain)
-		files := map[string][]byte{
-			"cert.pem":      newCert.Certificate,
-			"privkey.pem":   newCert.PrivateKey,
-			"chain.pem":     newCert.IssuerCertificate,
-			"fullchain.pem": append(newCert.Certificate, newCert.IssuerCertificate...),
-		}
-
-		for filename, data := range files {
-			path := filepath.Join(domainDir, filename)
-			if err := os.WriteFile(path, data, 0600); err != nil {
-				log.Printf("❌ Failed to save %s: %v", filename, err)
-				continue
-			}
-		}
-
 		fmt.Printf("✅ Successfully renewed certificate for %s\n", cert.Domain)
-		fmt.Printf("📅 New expiration: %s\n", newCert.NotAfter.Format("2006-01-02 15:04:05 MST"))
 	}
 
 	return nil
@@ -131,11 +108,12 @@ func findCertificatesForRenewal(certDir string, days int, renewAll bool, verbose
 		}
 
 		domainName := entry.Name()
-		certPath := filepath.Join(certDir, domainName, "cert.pem")
+		// Use the new certificate structure with current subdirectory
+		certPath := filepath.Join(certDir, domainName, "current", "cert.pem")
 
 		if _, err := os.Stat(certPath); os.IsNotExist(err) {
 			if verbose {
-				log.Printf("Skipping %s: no cert.pem found", domainName)
+				log.Printf("Skipping %s: no cert.pem found in current directory", domainName)
 			}
 			continue
 		}

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/bariiss/flarecert/internal/acme"
-	"github.com/bariiss/flarecert/internal/config"
 
 	"github.com/spf13/cobra"
 )
@@ -35,23 +34,12 @@ func init() {
 func runListCommand(cmd *cobra.Command, args []string) error {
 	verbose, _ := cmd.Flags().GetBool("verbose")
 
-	// Load configuration to get the correct cert directory
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load configuration: %w", err)
-	}
-
-	// Use cert directory from config if not overridden by flag
-	certDir := listCertDir
-	if certDir == "./certs" { // Default value means flag wasn't set
-		certDir = cfg.CertDir
-	}
-
 	if verbose {
-		log.Printf("Scanning certificate directory: %s", certDir)
+		log.Printf("Scanning certificate directory: %s", listCertDir)
 	}
 
 	// Expand tilde in path if present
+	certDir := listCertDir
 	if strings.HasPrefix(certDir, "~/") {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {

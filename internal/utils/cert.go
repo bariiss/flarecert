@@ -31,6 +31,27 @@ func GetCertificateDir(baseDir, domain string) string {
 	return filepath.Join(baseDir, cleanDomain)
 }
 
+// GetCertificateDirForDomains returns the directory path for a certificate based on domain list
+// If there's a wildcard domain, use it for naming, otherwise use the first domain
+func GetCertificateDirForDomains(baseDir string, domains []string) string {
+	if len(domains) == 0 {
+		return baseDir
+	}
+
+	// Look for wildcard domain first
+	for _, domain := range domains {
+		if strings.HasPrefix(domain, "*.") {
+			// Use wildcard domain for directory naming
+			cleanDomain := strings.ReplaceAll(domain, "*.", "wildcard-")
+			cleanDomain = strings.ReplaceAll(cleanDomain, ".", "-")
+			return filepath.Join(baseDir, cleanDomain)
+		}
+	}
+
+	// No wildcard found, use first domain
+	return GetCertificateDir(baseDir, domains[0])
+}
+
 // CreateCertificateStructure creates the directory structure for certificates
 func CreateCertificateStructure(baseDir, domain string) error {
 	certDir := GetCertificateDir(baseDir, domain)
@@ -56,9 +77,52 @@ func CreateCertificateStructure(baseDir, domain string) error {
 	return nil
 }
 
+// CreateCertificateStructureForDomains creates the directory structure for certificates based on domain list
+func CreateCertificateStructureForDomains(baseDir string, domains []string) error {
+	certDir := GetCertificateDirForDomains(baseDir, domains)
+
+	// Create main certificate directory
+	if err := os.MkdirAll(certDir, 0755); err != nil {
+		return fmt.Errorf("failed to create certificate directory: %w", err)
+	}
+
+	// Create subdirectories for better organization
+	subdirs := []string{
+		filepath.Join(certDir, "current"), // Current active certificate
+		filepath.Join(certDir, "archive"), // Previous certificates
+		filepath.Join(certDir, "logs"),    // Certificate generation logs
+	}
+
+	for _, dir := range subdirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+	}
+
+	return nil
+}
+
 // GetCertificatePaths returns all the file paths for a certificate
 func GetCertificatePaths(baseDir, domain string) CertificatePaths {
 	certDir := GetCertificateDir(baseDir, domain)
+	currentDir := filepath.Join(certDir, "current")
+
+	return CertificatePaths{
+		CertDir:       certDir,
+		CurrentDir:    currentDir,
+		ArchiveDir:    filepath.Join(certDir, "archive"),
+		LogsDir:       filepath.Join(certDir, "logs"),
+		CertFile:      filepath.Join(currentDir, "cert.pem"),
+		KeyFile:       filepath.Join(currentDir, "privkey.pem"),
+		ChainFile:     filepath.Join(currentDir, "chain.pem"),
+		FullchainFile: filepath.Join(currentDir, "fullchain.pem"),
+		InfoFile:      filepath.Join(currentDir, "cert.json"),
+	}
+}
+
+// GetCertificatePathsForDomains returns all the file paths for a certificate based on domain list
+func GetCertificatePathsForDomains(baseDir string, domains []string) CertificatePaths {
+	certDir := GetCertificateDirForDomains(baseDir, domains)
 	currentDir := filepath.Join(certDir, "current")
 
 	return CertificatePaths{
@@ -177,10 +241,8 @@ func ValidateDomainName(domain string) error {
 		return fmt.Errorf("domain cannot be empty")
 	}
 
-	// Allow wildcard domains
-	if strings.HasPrefix(domain, "*.") {
-		domain = domain[2:] // Remove *. prefix for validation
-	}
+	// Always remove leading "*." if present for validation
+	domain = strings.TrimPrefix(domain, "*.")
 
 	// Basic validation
 	if strings.Contains(domain, " ") {
