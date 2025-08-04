@@ -1,6 +1,16 @@
 # FlareCert - Let's Encrypt SSL Certificates with Cloudflare DNS-01 Challenge
 
-A Go application for automatically generating and renewing SSL certificates from Let's Encrypt using Cloudflare's DNS-01 challenge method.
+**FlareCert** is a powerful, easy-to-use Go application designed to streamline SSL certificate management for domains hosted on Cloudflare. It automatically generates, validates, and renews free SSL certificates from Let's Encrypt using Cloudflare's DNS-01 challenge method, making it perfect for both development and production environments.
+
+## Why FlareCert?
+
+🚀 **Zero Downtime**: Uses DNS-01 validation, so no web server interruption required  
+🔧 **Cloudflare Compatible**: Works seamlessly with Cloudflare's proxy (orange cloud) enabled  
+🌟 **Wildcard Support**: Generate wildcard certificates (*.domain.com) effortlessly  
+⚡ **Automation Ready**: Perfect for CI/CD pipelines and automated deployments  
+🎯 **Kubernetes Integration**: Built-in support for generating Kubernetes Secret YAML files  
+🔄 **Smart Renewal**: Automatic certificate renewal with intelligent scheduling  
+📦 **Multiple Deployment Options**: Native binary, Docker, Homebrew, or build from source
 
 ## Features
 
@@ -347,7 +357,6 @@ docker run --rm \
 
 # Use with docker-compose (create docker-compose.yml)
 cat > docker-compose.yml << EOF
-version: '3.8'
 services:
   flarecert:
     image: ghcr.io/bariiss/flarecert:latest
